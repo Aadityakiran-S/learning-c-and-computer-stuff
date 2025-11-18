@@ -6,12 +6,17 @@ void printHello();
 void printMessage(const char* message);
 void printCustomGreeting(const char* name);
 void readFile(const char* fileName);
+void overwriteFile(const char* fileName, const char* content);
 void readFileRawDog(const char* fileName);
+void appendToFile(const char* fileName, const char* contentToAppend);
 #pragma endregion
 
 int main()
 {
-    readFileRawDog("example.txt");
+    overwriteFile("example.txt", "Hey guys! I'm a file.\n");
+    readFile("example.txt");
+    appendToFile("example.txt", "Oh, it seems here that I have some content added to me. Yay!.\n");
+    readFile("example.txt");
     return 0;
 }
 
@@ -42,6 +47,27 @@ void readFile(const char* fileName){
     while(fgets(buffer, sizeof(buffer), fp)){
         printf("%s", buffer);
     }
+    printf("\n");
+    fclose(fp);
+}
+
+void overwriteFile(const char* fileName, const char* content){
+    FILE* fp = fopen(fileName, "w");
+    if(fp == NULL){
+        perror("Error opening file for writing"); return;
+    }
+
+    fprintf(fp, "%s", content);
+    fclose(fp);
+}
+
+void appendToFile(const char* fileName, const char* contentToAppend){
+    FILE* fp = fopen(fileName, "a");
+    if(fp == NULL){
+        perror("Error opening file for appending"); return;
+    }
+
+    fprintf(fp, "%s", contentToAppend);
     fclose(fp);
 }
 
