@@ -1,6 +1,11 @@
 #include "functions.h"
 #include <stdio.h>
 #include <windows.h>
+#include <io.h>
+#include <fcntl.h>
+#include <sys/stat.h>
+#include <errno.h>
+#include <string.h>
 
 #pragma region helper_functions
 void printHello()
@@ -43,6 +48,43 @@ void overwriteFile(const char* fileName, const char* content){
     fclose(fp);
 }
 
+void overwriteFileRaw(const char *fileName, const char *content, size_t length){
+    int fd = _open(fileName, _O_WRONLY | _O_CREAT | _O_TRUNC | _O_BINARY, _S_IREAD | _S_IWRITE);
+
+    if(fd == -1){
+        perror("Error opening file with raw descriptors"); return;
+    }
+
+    size_t total_written = 0;
+    while(total_written < length){
+        int bytes_to_write = (int)(length - total_written);
+        int n = _write(fd, content + total_written, bytes_to_write);
+
+        if(n < 0){
+            if(errno == EINTR){
+                continue; // Retry the write operation
+            }
+            perror("Error while writing to file");
+            _close(fd);
+            return;
+        }
+
+        if(n == 0){
+            fprintf(stderr, "Warning: write returned 0 bytes, stopping\n");
+            break;
+        }
+        total_written += n;
+    }
+
+    if(total_written < length){
+        fprintf(stderr, "warning: only write %zu of %zu bytes\n", total_written, length);
+    }
+
+    if(_close(fd) == -1){
+        perror("Error closing file descriptor"); return;
+    }
+}
+
 void appendToFile(const char* fileName, const char* contentToAppend){
     FILE* fp = fopen(fileName, "a");
     if(fp == NULL){
@@ -53,36 +95,4 @@ void appendToFile(const char* fileName, const char* contentToAppend){
     fclose(fp);
 }
 
-void readFileRawDog(const char* fileName){
-    // Open the file
-    HANDLE hFile = CreateFileA(
-        fileName,                    // File name
-        GENERIC_READ,                // Read access
-        FILE_SHARE_READ,             // Allow others to read
-        NULL,                        // Default security
-        OPEN_EXISTING,               // File must exist
-        FILE_ATTRIBUTE_NORMAL,       // Normal file
-        NULL                         // No template
-    );
-    
-    if(hFile == INVALID_HANDLE_VALUE){
-        // Error handling without perror
-        return;
-    }
-    
-    char buffer[256];
-    DWORD bytesRead;
-    
-    // Read file in chunks
-    while(ReadFile(hFile, buffer, sizeof(buffer) - 1, &bytesRead, NULL) && bytesRead > 0){
-        buffer[bytesRead] = '\0';  // Null-terminate
-        
-        // Write to console (stdout)
-        HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
-        DWORD bytesWritten;
-        WriteFile(hConsole, buffer, bytesRead, &bytesWritten, NULL);
-    }
-    
-    CloseHandle(hFile);
-}
 #pragma endregion
