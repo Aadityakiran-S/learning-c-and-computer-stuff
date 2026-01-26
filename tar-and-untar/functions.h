@@ -1,6 +1,8 @@
 #ifndef FUNCTIONS_H
 #define FUNCTIONS_H
 
+#include <stddef.h>  // for size_t
+
 void printHello(); 
 void printMessage(const char* message);
 void printCustomGreeting(const char* name);
