@@ -2,10 +2,8 @@
 #ifndef COLOR_H
 #define COLOR_H
 
-typedef enum {
-    RED = 0,
-    GREEN = 1,
-    BLUE = 2
-} Color;
+typedef enum color {
+    RED, GREEN, BLUE
+} color_t;
 
 #endif /* COLOR_H */
