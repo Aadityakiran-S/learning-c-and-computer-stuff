@@ -1,0 +1,19 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "build-tar-demo-debug",
+            "type": "shell",
+            "command": "gcc",
+            "args": [
+                "-g",
+                "-o", "tar-and-untar/output/tar_demo.exe",
+                "tar-and-untar/src/program.c",
+                "tar-and-untar/src/functions.c",
+                "tar-and-untar/src/tar.c"
+            ],
+            "group": "build",
+            "problemMatcher": ["$gcc"]
+        }
+    ]
+}

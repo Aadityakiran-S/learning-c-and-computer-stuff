@@ -5,9 +5,7 @@
 #include <time.h>
 #include <sys/stat.h>
 
-/* ============================================================================
- *  INTERNAL HELPERS
- * ============================================================================ */
+#pragma region internal_helpers
 
 /*
  * Compute the checksum for a tar header.
@@ -131,9 +129,9 @@ static int fill_header(struct tar_header *header, const char *file_name) {
     return 0;
 }
 
-/* ============================================================================
- *  PUBLIC API IMPLEMENTATION
- * ============================================================================ */
+#pragma endregion
+
+#pragma region public_api
 
 /*
  * tar_create — Create a .tar archive from a list of files.
@@ -351,3 +349,5 @@ int tar_extract(const char *archive_name) {
     printf("Extraction complete.\n");
     return 0;
 }
+
+#pragma endregion
