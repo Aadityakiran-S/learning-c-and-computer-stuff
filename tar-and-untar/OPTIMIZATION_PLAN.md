@@ -271,11 +271,12 @@ int main() {
 
 ### Build command for the benchmark
 
-```
+```shell
 gcc -O2 -o tar-and-untar/output/benchmark.exe tar-and-untar/src/benchmark.c tar-and-untar/src/tar.c tar-and-untar/src/timer.c
 ```
 
 Notes:
+
 - We use `-O2` (optimization level 2) so the compiler generates reasonably
   optimized code. Without this, the compiler does zero optimization — it
   translates your C literally, which is slower. `-O2` enables things like
@@ -294,6 +295,7 @@ Notes:
 ### Expected results
 
 For 3 x 10 MB files with the current 512-byte buffer:
+
 - `tar_create`: probably **100–500 ms** (lots of tiny reads + writes)
 - `tar_list`: probably **< 1 ms** (just reads headers, skips data)
 - `tar_extract`: probably **100–500 ms** (same issue as create)
@@ -331,7 +333,7 @@ The key insight: **the tar FORMAT requires 512-byte block alignment, but nothing
 forces us to do I/O in 512-byte chunks**. We can read 64 KB at a time and still
 write 512-byte-aligned blocks to the archive.
 
-#### In `tar.h`, add a new constant:
+#### In `tar.h`, add a new constant
 
 ```c
 /*
@@ -348,7 +350,7 @@ write 512-byte-aligned blocks to the archive.
 #define IO_BUFFER_SIZE (64 * 1024)   /* 64 KB */
 ```
 
-#### Changes to `tar_create`:
+#### Changes to `tar_create`
 
 ```c
 int tar_create(const char *archive_name,
@@ -440,11 +442,12 @@ int tar_create(const char *archive_name,
 **Wait — there's a subtle bug risk here.** In the original code, we padded every
 512-byte chunk. In the new code, we only pad the *final* chunk of each file.
 This is actually correct because:
+
 - Intermediate chunks are full `IO_BUFFER_SIZE` bytes, and `IO_BUFFER_SIZE` is a
   multiple of 512, so they're already aligned.
 - Only the last chunk can be non-aligned, and we pad that one.
 
-#### Changes to `tar_extract`:
+#### Changes to `tar_extract`
 
 ```c
 int tar_extract(const char *archive_name) {
@@ -540,13 +543,14 @@ int tar_extract(const char *archive_name) {
 ### Expected improvement
 
 The improvement depends on file size and disk speed. Rough expectations:
+
 - **10 MB files on SSD**: maybe 2–5x faster
 - **10 MB files on HDD**: maybe 3–10x faster
 - **100 MB files**: the difference becomes even more dramatic
 
-You can also experiment with different `IO_BUFFER_SIZE` values (16 KB, 64 KB, 256 KB,
-1 MB) and chart the results. There's usually a sweet spot — going beyond ~256 KB
-often doesn't help much more.
+You can also experiment with different `IO_BUFFER_SIZE` values
+(16 KB, 64 KB, 256 KB, 1 MB) and chart the results. There's usually a sweet
+spot — going beyond ~256 KB often doesn't help much more.
 
 ---
 
@@ -564,7 +568,7 @@ The idea in this step: **bypass the C library's buffer entirely** and call the
 OS directly. On Windows, that means `_open()` / `_read()` / `_write()` / `_close()`
 from `<io.h>` (you already used `_open` in `functions.c`).
 
-```
+```text
 fread path:    your code → C library buffer → ReadFile() → kernel → disk
 raw path:      your code → ReadFile() → kernel → disk
 ```
@@ -619,11 +623,13 @@ how we read the input file.
 ### Why this might be faster (or might not)
 
 **Might be faster because:**
+
 - One less buffer copy. `fread` copies data from its internal buffer to your
   buffer. `_read` copies directly from the OS to your buffer.
 - For large sequential reads, the OS's own read-ahead is usually sufficient.
 
 **Might NOT be faster because:**
+
 - `fread`'s internal buffer is actually quite efficient — it's been optimized
   for decades.
 - The real bottleneck is the disk, not the CPU copying a few bytes in memory.
@@ -651,7 +657,7 @@ data from the OS into our buffer, we ask the OS to **map the file directly into
 our process's memory address space**. After that, the file's contents are
 accessible through a regular pointer — like a giant array.
 
-```
+```text
 Traditional I/O:
   disk → kernel page cache → user buffer (your char[64KB]) → you use it
 
@@ -665,6 +671,7 @@ The OS's prefetcher will detect that you're reading sequentially and start loadi
 pages ahead of where you are.
 
 On Windows, the API is:
+
 1. `CreateFileA()` — open the file
 2. `CreateFileMappingA()` — create a mapping object (tells the OS "I want this file
    in my address space")
@@ -820,13 +827,14 @@ to the archive, then read the next file, then write. The disk is idle while we'r
 writing, and vice versa.
 
 A pipeline uses **two threads**:
+
 - **Reader thread**: reads data from source files into shared buffers.
 - **Writer thread**: writes from those shared buffers into the archive.
 
 While the writer is writing chunk N, the reader can be reading chunk N+1. This
 overlaps I/O operations and can reduce total time.
 
-```
+```text
 Single-threaded:
   [Read 1][Write 1][Read 2][Write 2][Read 3][Write 3]
 
@@ -848,7 +856,7 @@ This requires several new concepts:
 
 Here's the architecture:
 
-```
+```text
 ┌──────────┐    ┌─────────────────┐    ┌──────────┐
 │  Reader  │───►│  Buffer Queue   │───►│  Writer  │
 │  Thread  │    │  (mutex-guarded)│    │  Thread  │
@@ -857,7 +865,7 @@ Here's the architecture:
 
 ### Pseudocode
 
-```
+```text
 // Shared state
 buffer_queue = empty queue of {data, length} pairs
 mutex = new mutex
@@ -962,7 +970,7 @@ typedef struct {
 After all steps, you should have a table like this:
 
 | Step | tar_create (ms) | tar_extract (ms) | Notes |
-|------|-----------------|-------------------|-------|
+| ------ | --------------- | ------------------- | ------- |
 | 1 (baseline, 512B buffer) | ??? | ??? | Your starting point |
 | 2 (64 KB buffer) | ??? | ??? | Biggest single improvement |
 | 3 (raw I/O) | ??? | ??? | Might be similar to step 2 |
